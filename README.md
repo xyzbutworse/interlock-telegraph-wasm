@@ -1,37 +1,51 @@
-# INTERLOCK Telegraph Scorer v10
+# INTERLOCK Telegraph Scorer v11
 
-Verified WebAssembly scorer for Telegraph's `ONCHAIN_TX_LOOKUP` intent.
+Compact WebAssembly scorer for Telegraph's `ONCHAIN_TX_LOOKUP` intent.
 
-## Artifact
+Status: published artifact, not yet registered or accepted by Telegraph.
 
-- File: `interlock_static_potion_v10_v5_bounded.wasm`
-- Size: `8,236,087` bytes
-- SHA-256: `04361a7837673ca04ae500c639139d936ad3eab266a2afe7cde1a72c546c41e8`
-- Keccak-256: `0x4e0f6988422f964581c2e9f46769308b2b5c03e4dfa90cbef9e33331e7a67bdb`
+## Selected artifact
+
+- File: `interlock_static_potion_v11_compact80.wasm`
+- Size: `3,039,191` bytes
+- SHA-256: `82a5c3bbb3f845de1f38ded3cc0bda75e742124efa631df3552388a1fe9d3d13`
+- Keccak-256: `0x04c566b197d8102a850a3fc1ada87752fbc508adcb312b1eb2ae3521e0a988da`
 - Telegraph intent: `ONCHAIN_TX_LOOKUP`
+- WASM imports: `0`
+- Required exports: `memory`, `alloc`, `dealloc`, `rank_answer`
 
-V10 restores the node-tested v5 scoring architecture and changes only the input work budget. Public v5 scores remain unchanged across the 21-pair adversarial corpus and the 125-row public rank proxy.
+V11 preserves v10 scoring logic and changes one mechanism. The frozen 256-dimensional embedding table is projected to 80 dimensions with deterministic non-centered PCA, followed by per-row INT8 quantization.
 
-Use the raw GitHub URL pinned to a commit SHA. A commit-pinned URL keeps the served bytes immutable.
+The selected module is 63.10 percent smaller than v10.
 
-## Verification
+## Measured verification
+
+- ABI and corpus checks: 23 of 23
+- Focused ordering: 15 of 15
+- Broad discrimination: 29 of 32
+- Worst self-match: 1.0
+- Rust scorer tests: 32 of 32
+- Repository tests: 185 of 185
+- Fresh release rebuild: byte identical
+- Wazero interpreter stress: 300 long-input calls in 14.89 seconds
+- Linear memory before and after stress: 5,242,880 bytes
+
+The 21-pair comparison against v10 preserved ordering at 20 of 21, increased average margin from 0.879315 to 0.883566, introduced no ties, and preserved the public rank proxy within the 0.01 acceptance gate.
+
+## Verify downloaded bytes
 
 ```sh
-shasum -a 256 interlock_static_potion_v10_v5_bounded.wasm
+shasum -a 256 interlock_static_potion_v11_compact80.wasm
 ```
 
 Expected output:
 
 ```text
-04361a7837673ca04ae500c639139d936ad3eab266a2afe7cde1a72c546c41e8  interlock_static_potion_v10_v5_bounded.wasm
+82a5c3bbb3f845de1f38ded3cc0bda75e742124efa631df3552388a1fe9d3d13  interlock_static_potion_v11_compact80.wasm
 ```
 
-Local verification:
+Use a raw GitHub URL pinned to the release commit SHA. A commit-pinned URL keeps the served bytes immutable.
 
-- ABI and corpus: 23 of 23
-- Ordering mirror: 15 of 15
-- Discrimination: 29 of 32
-- Worst self-match: 1.0
-- 300 calls on 128 KiB inputs under wazero interpreter: 11.33 seconds total
-- Linear memory before and after the stress run: 10,420,224 bytes
-- Isolated rebuild: byte-identical
+## Evidence boundary
+
+The metrics above come from public local corpora and local runtimes. Telegraph private fixtures and node delivery remain unknown until evaluation. Publication does not prove registration or acceptance.
