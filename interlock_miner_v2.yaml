@@ -1,0 +1,194 @@
+# INTERLOCK — Telegraph Miner registration YAML (ONCHAIN_TX_LOOKUP)
+#
+# Schema: telegraph-examples/frontend/yaml/example-miner.yaml (current reference).
+# Live validation result (2026-08-18, https://integrate.telegraphprotocol.com/api/validate):
+#   valid: true; slug interlock-onchain-tx-lookup;
+#   sandbox probe of POST /miner/onchain-tx-lookup: success true (reachable endpoint).
+#
+# BEFORE REGISTRATION this file must be:
+#   1. hosted at a public URL (IPFS pinned or served over HTTPS); and
+#   2. `base_url` replaced with the deployed INTERLOCK service URL. The value
+#      below (`http://127.0.0.1:8787`) is the node-local upstream used for local
+#      sandbox runs (the same convention the telegraph-examples demo uses) — it
+#      is NOT a wireable production address and must be swapped before the
+#      registerMiner transaction is submitted. See docs/LIVE-PROOF.md.
+
+version: "1"                    # Always "1"
+kind: miner                     # "miner" = called per request
+id: 9007                        # Numeric ID used in API paths: /engine/v1/ask/9007
+slug: interlock-onchain-tx-lookup
+protocol: generic               # plain HTTP API (no bittensor subnet)
+name: INTERLOCK On-Chain Transaction Lookup
+description: >
+  Deterministic, evidence-scoped transaction lookup for EVM/Base workflows.
+  Given a chainId and txHash, returns the authoritative receipt-derived facts:
+  existence, lifecycle/status, block/confirmation facts, sender/recipient,
+  native value, gas, contract-creation signal, transfer events, approvals and
+  logs. INTERLOCK's commitment barrier consumes this intent; policy decisions
+  are enforced downstream by INTERLOCK, never fabricated by this miner.
+
+base_url: https://interlock-telegraph.fly.dev
+
+endpoints:
+  - path: /miner/onchain-tx-lookup
+    external_path: /miner/onchain-tx-lookup
+    method: POST
+    description: >
+      Look up one EVM transaction and return its receipt-derived facts. POST a
+      JSON body with chainId and txHash; the response is the canonical
+      INTERLOCK ONCHAIN_TX_LOOKUP result (maximal scope = standard receipt;
+      anything a standard RPC configuration cannot prove is explicitly null).
+    intents: [ONCHAIN_TX_LOOKUP]
+    params:
+      query:
+        required:
+          - name: chainId
+            type: integer
+            intents: ["*"]
+            description: EVM chain id (e.g. 84532 for Base Sepolia).
+            example: 84532
+          - name: txHash
+            type: string
+            intents: ["*"]
+            description: Transaction hash, 0x-prefixed 64 hex chars.
+            example: 0x0000000000000000000000000000000000000000000000000000000000000000
+
+input_schema:
+  type: object
+  required: [chainId, txHash]
+  properties:
+    chainId:
+      type: integer
+      description: EVM chain id of the transaction.
+    txHash:
+      type: string
+      pattern: "^0x[0-9a-fA-F]{64}$"
+      description: Transaction hash, 0x-prefixed 64 hex chars.
+
+output_schema:
+  type: object
+  required:
+    - schemaVersion
+    - resultVersion
+    - intent
+    - chainId
+    - txHash
+    - summary
+    - exists
+    - lifecycle
+    - status
+    - confirmations
+    - blockNumber
+    - blockHash
+    - transactionIndex
+    - from
+    - to
+    - contractCreation
+    - contractAddress
+    - nativeValueWei
+    - gasUsed
+    - effectiveGasPriceWei
+    - revertReason
+    - transfers
+    - approvals
+    - logs
+    - observedAt
+    - evidenceScope
+  properties:
+    schemaVersion: { type: string }
+    resultVersion: { type: string }
+    intent: { type: string, const: ONCHAIN_TX_LOOKUP }
+    chainId: { type: integer }
+    chainName: { type: string, description: Human-readable chain name (e.g. Ethereum, Base). }
+    nativeSymbol: { type: string, description: Native currency symbol of the chain (e.g. ETH, POL). }
+    txHash: { type: string }
+    summary:
+      type: string
+      description: >-
+        One natural-language sentence stating the receipt facts (outcome, chain,
+        block, native value, sender/recipient, token-transfer presence). This is
+        the field scored against the ground truth.
+    exists: { type: boolean }
+    lifecycle:
+      type: string
+      enum: [not_found, pending, mined]
+    status:
+      type: [string, "null"]
+      enum: [not_found, pending, success, reverted, null]
+    confirmations: { type: [integer, "null"] }
+    blockNumber: { type: [integer, "null"] }
+    blockHash: { type: [string, "null"] }
+    transactionIndex: { type: [integer, "null"] }
+    from: { type: [string, "null"] }
+    to: { type: [string, "null"] }
+    contractCreation: { type: [boolean, "null"] }
+    contractAddress: { type: [string, "null"] }
+    nonce: { type: [integer, "null"] }
+    nativeValueWei: { type: [string, "null"] }
+    nativeValue: { type: [string, "null"], description: Native value in whole units (e.g. ETH), decimal string. }
+    gasUsed: { type: [string, "null"] }
+    effectiveGasPriceWei: { type: [string, "null"] }
+    feeWei: { type: [string, "null"], description: Transaction fee in wei (gasUsed * effectiveGasPrice). }
+    feeNative: { type: [string, "null"], description: Transaction fee in whole native units, decimal string. }
+    revertReason: { type: [string, "null"] }
+    transfers:
+      type: array
+      description: ERC20/ERC721/ERC1155/native transfer events, order-free.
+      items:
+        type: object
+        properties:
+          kind: { type: string, enum: [native, erc20, erc721, erc1155] }
+          token: { type: [string, "null"] }
+          from: { type: string }
+          to: { type: string }
+          amount: { type: string }
+          tokenId: { type: [string, "null"] }
+          logIndex: { type: integer }
+    approvals:
+      type: array
+      items:
+        type: object
+        properties:
+          token: { type: string }
+          owner: { type: string }
+          spender: { type: string }
+          amount: { type: string }
+          approved: { type: boolean }
+          logIndex: { type: integer }
+    logs:
+      type: array
+      description: Raw event logs (address, topics, data).
+      items:
+        type: object
+        properties:
+          address: { type: string }
+          topics: { type: array, items: { type: string } }
+          data: { type: string }
+          logIndex: { type: integer }
+    observedAt:
+      type: string
+      description: ISO-8601 timestamp when the facts were observed.
+    evidenceScope:
+      type: object
+      description: Which fact classes this deployment can prove (standard receipt vs extended tracing).
+      properties:
+        receipt: { type: boolean }
+        logs: { type: boolean }
+        erc20Transfers: { type: boolean }
+        erc721Transfers: { type: boolean }
+        erc1155Transfers: { type: boolean }
+        approvals: { type: boolean }
+        internalNativeTransfers: { type: boolean }
+        executionTrace: { type: boolean }
+        revertReason: { type: boolean }
+
+semantics:
+  signal_mapping:
+    # The validator scores response[label_field] against a natural-language ground
+    # truth by semantic + numeric similarity. A single categorical word (status)
+    # cannot match a sentence, so we point at the natural-language `summary` and
+    # give `reason` as the human-readable rationale field.
+    label_field: summary
+    reason_field: summary
+  supported_intents:
+    - ONCHAIN_TX_LOOKUP
